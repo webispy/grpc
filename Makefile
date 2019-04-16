@@ -3007,7 +3007,7 @@ $(OBJDIR)/$(CONFIG)/%.o : %.cpp
 	$(Q) mkdir -p `dirname $@`
 	$(Q) $(CXX) $(CPPFLAGS) $(CXXFLAGS) -MMD -MF $(addsuffix .dep, $(basename $@)) -c -o $@ $<
 
-install: install_c install_cxx install-plugins install-certs
+install: install_c install_cxx install-plugins install-certs install-protoc
 
 install_c: install-headers_c install-static_c install-shared_c
 
@@ -3241,6 +3241,10 @@ install-certs: etc/roots.pem
 	$(E) "[INSTALL] Installing root certificates"
 	$(Q) $(INSTALL) -d $(DESTDIR)$(prefix)/share/grpc
 	$(Q) $(INSTALL) etc/roots.pem $(DESTDIR)$(prefix)/share/grpc/roots.pem
+
+install-protoc:
+	$(E) "[INSTALL] Installing protoc"
+	$(Q)$(MAKE) -C third_party/protobuf install DESTDIR=$(DESTDIR)
 
 clean:
 	$(E) "[CLEAN]   Cleaning build directories."
