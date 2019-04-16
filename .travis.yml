@@ -1,70 +1,45 @@
-git:
-  depth: 1
-language: objective-c
-osx_image: xcode7.3
+language: generic
+sudo: required
+services: docker
+addons:
+  apt:
+    update: true
+    packages:
+    - qemu-user-static
+    - binfmt-support
+
 env:
-  global:
-    - CONFIG=opt
-    - TEST=objc
-    - JOBS=1
   matrix:
-    - SCHEME="RxLibraryUnitTests"
-      WORKSPACE="Tests.xcworkspace" TEST_PATH="src/objective-c/tests" BUILD_ONLY="false"
-      INTEROP_SERVER="false"
-    - SCHEME="InteropTestsLocalSSL"
-      WORKSPACE="Tests.xcworkspace" TEST_PATH="src/objective-c/tests" BUILD_ONLY="false"
-      INTEROP_SERVER="true"
-    - SCHEME="InteropTestsLocalCleartext"
-      WORKSPACE="Tests.xcworkspace" TEST_PATH="src/objective-c/tests"  BUILD_ONLY="false"
-      INTEROP_SERVER="true"
-    # TODO(jcanizales): Make tests an app project (instead of library), so the following will work.
-    # - SCHEME="InteropTestsRemote"
-    #   WORKSPACE="Tests.xcworkspace" TEST_PATH="src/objective-c/tests" BUILD_ONLY="false"
-    #   INTEROP_SERVER="true"
-    - SCHEME="HelloWorld"
-      WORKSPACE="HelloWorld.xcworkspace" TEST_PATH="examples/objective-c/helloworld"
-      BUILD_ONLY="true" INTEROP_SERVER="false"
-    - SCHEME="RouteGuideClient"
-      WORKSPACE="RouteGuideClient.xcworkspace" TEST_PATH="examples/objective-c/route_guide"
-      BUILD_ONLY="true" INTEROP_SERVER="false"
-    - SCHEME="AuthSample"
-      WORKSPACE="AuthSample.xcworkspace" TEST_PATH="examples/objective-c/auth_sample"
-      BUILD_ONLY="true" INTEROP_SERVER="false"
-    - SCHEME="Sample"
-      WORKSPACE="Sample.xcworkspace" TEST_PATH="src/objective-c/examples/Sample" BUILD_ONLY="true"
-      INTEROP_SERVER="false"
-    - SCHEME="Sample"
-      WORKSPACE="Sample.xcworkspace" TEST_PATH="src/objective-c/examples/Sample" BUILD_ONLY="true"
-      INTEROP_SERVER="false" FRAMEWORKS="YES"
-    - SCHEME="SwiftSample"
-      WORKSPACE="SwiftSample.xcworkspace" TEST_PATH="src/objective-c/examples/SwiftSample"
-      BUILD_ONLY="true" INTEROP_SERVER="false"
-before_install:
-  # Until Travis upgrades from Cocoapods 0.39, we need to do it here.
-  - pod --version
-  - gem uninstall cocoapods -a
-  - gem install cocoapods -v '1.0.1'
-  - pod --version
-  # Recent pods aren't found if we don't explicitly update Cocoapods' repo.
-  - pod repo update
-  - brew install gflags
+  - TARGET=ux64 CHROOT=xenial-amd64 ARCH=amd64
+  - TARGET=u710 CHROOT=xenial-arm64 ARCH=arm64
+  - TARGET=u530 CHROOT=xenial-armhf ARCH=armhf
+
 install:
-  - pushd $TEST_PATH
-  - pod install
-  - popd
-before_script:
-  - if [ "${INTEROP_SERVER}" = "true" ]; then
-      make interop_server;
-      (bins/$CONFIG/interop_server --port=5050 &);
-      (bins/$CONFIG/interop_server --port=5051 --use_tls &);
-    fi
+- update-binfmts --display
+- docker system info
+- sudo rm /dev/shm
+- sudo mkdir /dev/shm
+- sudo mount --bind /run/shm /dev/shm
+- docker pull webispy/artik_devenv_$TARGET
+
 script:
-  - if [ "${BUILD_ONLY}" = "true" ]; then
-      xctool -workspace "$TEST_PATH/$WORKSPACE" -scheme "$SCHEME"
-      -sdk iphonesimulator9.3 build;
-    else
-      xctool -workspace "$TEST_PATH/$WORKSPACE" -scheme "$SCHEME"
-      -sdk iphonesimulator9.3 test;
-    fi
-notifications:
-  email: false
+- docker run -it --name builder --privileged -v /var/lib/schroot -v $PWD:/home/work/src
+  -w /home/work/src webispy/artik_devenv_$TARGET bash -c "mkdir /home/work/result
+  && sbuild --chroot $CHROOT --arch $ARCH --dpkg-source-opts=\"-I.git*\" && cp /home/work/*.deb
+  /home/work/result/"
+
+before_deploy:
+- docker cp builder:/home/work/result /tmp/
+- ls -l /tmp/result
+
+deploy:
+  provider: releases
+  api_key:
+    secure: TSVD2NcevnI4SiRhj5rcswEUhz3TADtBfqHzzMmgVwvlhzvSPUTEdHqcxeQszXURbFcJAz9bxt1AGDvWcsisCyhxMNRfIvZxmZBa5PCyP+5twLPvp8kKu7fpUH60wEUyjlhSbPQsN6MiueVhA30Tjuu4Cl36qkZp2UEGrpC+HmCqLG43k+cDbhobUh3D8494voSMbaXUAz42IJuY2GlBPCBP8D6bXcdAupPiJ1QFPJkOIS0yMhybmqTsbNaqsG7sy9xFDvM959wRbjVznQibDH76nwfmRAGQa1H//qqO3KVNz1ML4X2SygG6VKx62shEzptrEowU/bSMTaPu/Adexex/PW+w8qYAJuNYlsRUoDRxTD/RTPHAsH+LlXStJ207OCmEeXLzfNzDd3ZnsJI5RWEDJ+AUOhaaidDkj6y0gKd99YaE0FHB62yXN7XCtwcwYl5ILbxHVhaTfR/4vniWeADr2i3j6focNEyqToaKUR2TArNPGS2EytmEufs0gInOHm+DPQ/5jVQyGyDZCMfAo2tlvq8JGYf6n25IkXUjGiJxgLLqHj+AdAjr54tfCJTCJAZqKwXvWrIerPW9VAGngsLo47pqwOjM0kVyM9Dr7KVpvr1AOBq0BdWc32GmX64wC9Stg01au2YmJ/jbdtbfJ1/96R8Z+9r5qNAgjnptu34=
+  file_glob: true
+  file: /tmp/result/*
+  skip_cleanup: true
+  on:
+    repo: webispy/grpc
+    branch: v1.19.x
+    tags: true
