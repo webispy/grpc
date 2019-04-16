@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+# See debhelper(7) (uncomment to enable)
+# output every command that modifies files on the build system.
+DH_VERBOSE=1
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+
+CFLAGS := $(shell dpkg-buildflags --get CFLAGS)
+CFLAGS := $(filter-out -O2,$(CFLAGS))
+
+JOBS := $(filter -j%,$(patsubst parallel=%,-j%,${DEB_BUILD_OPTIONS}))
+PREFIX := prefix=/usr
+DESTDIR := DESTDIR=$(CURDIR)/debian/tmp
+LIBRARY_PATH := LIBRARY_PATH=lib/$(DEB_HOST_MULTIARCH)
+PROTOBUFCONF := PROTOBUF_CONFIG_OPTS="--libdir=/usr/lib/$(DEB_HOST_MULTIARCH)"
+MAKEOPTIONS := V=1 $(JOBS) $(PREFIX) $(LIBRARY_PATH) $(DESTDIR) $(PROTOBUFCONF)
+
+%:
+	dh $@ --parallel
+
+#override_dh_auto_clean:
+
+# Skip test
+override_dh_auto_test:
+
+override_dh_auto_build:
+	dpkg-buildflags
+	@echo $(MAKEOPTIONS)
+	make $(MAKEOPTIONS)
+
+override_dh_auto_install:
+	make $(MAKEOPTIONS) install

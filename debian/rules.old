@@ -1,0 +1,43 @@
+#!/usr/bin/make -f
+# See debhelper(7) (uncomment to enable)
+# output every command that modifies files on the build system.
+DH_VERBOSE=1
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+
+CFLAGS := $(shell dpkg-buildflags --get CFLAGS)
+CFLAGS := $(filter-out -O2,$(CFLAGS))
+
+JOBS := $(filter -j%,$(patsubst parallel=%,-j%,${DEB_BUILD_OPTIONS}))
+PREFIX := prefix=/usr
+DESTDIR := DESTDIR=$(CURDIR)/debian/tmp
+LIBRARY_PATH := LIBRARY_PATH=lib/$(DEB_HOST_MULTIARCH)
+PROTOBUF_PATH := $(CURDIR)/out
+
+CROSS := CC=$(DEB_HOST_GNU_TYPE)-gcc CXX=$(DEB_HOST_GNU_TYPE)-g++ RANLIB=$(DEB_HOST_GNU_TYPE)-ranlib LD=$(DEB_HOST_GNU_TYPE)-gcc LDXX=$(DEB_HOST_GNU_TYPE)-g++ AR="$(DEB_HOST_GNU_TYPE)-ar rcs" PROTOC=$(PROTOBUF_PATH)/bin/protoc HAS_PROTOC=true USE_BUILT_PROTOC=false
+PROTOBUF := PROTOBUF_CONFIG_OPTS="--host=$(DEB_HOST_GNU_TYPE) AR=$(DEB_HOST_GNU_TYPE)-ar --with-protoc=$(PROTOBUF_PATH)/bin/protoc"
+
+export PKG_CONFIG_PATH=/usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig
+
+MAKEOPTIONS := V=1 $(JOBS) $(PREFIX) $(LIBRARY_PATH) $(DESTDIR) $(CROSS) $(PROTOBUF)
+
+%:
+	dh $@ --parallel
+
+#override_dh_auto_clean:
+
+# Skip test
+override_dh_auto_test:
+
+override_dh_auto_build:
+	dpkg-buildflags
+	@echo $(MAKEOPTIONS)
+# Stage-1: Build and install protobuf to local system
+	cd third_party/protobuf && pwd && ls -l && ./configure --prefix=$(PROTOBUF_PATH) && make $(JOBS) && make install
+	ls -lR $(PROTOBUF_PATH)
+# Stage-2: Build gRPC (cross-compile)
+	make $(MAKEOPTIONS)
+
+override_dh_auto_install:
+	make $(MAKEOPTIONS) install

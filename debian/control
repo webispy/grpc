@@ -1,0 +1,24 @@
+Source: grpc
+Section: libs
+Priority: optional
+Maintainer: Inho Oh <inho.oh@sk.com>
+Build-Depends: debhelper (>=9),
+	autoconf,
+	automake,
+	libtool,
+	libssl-dev,
+	zlib1g-dev,
+	pkg-config
+Standards-Version: 3.9.6
+Homepage: http://www.grpc.io/
+
+Package: libgrpc
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: gRPC
+
+Package: libgrpc-dev
+Architecture: any
+Depends: libgrpc
+Description: gRPC (development files)
+
