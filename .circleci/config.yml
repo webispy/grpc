@@ -1,0 +1,92 @@
+version: 2
+jobs:
+  build:
+    machine: true
+    steps:
+      - checkout
+      - run:
+         name: Submodules
+         command: |
+           git submodule update --init --recursive
+      - run:
+         name: Enabling QEMU
+         command: |
+           sudo apt update
+           sudo apt install -y --no-install-recommends build-essential qemu-user-static binfmt-support
+      - run:
+         name: Build
+         command: |
+           SCRIPT="mkdir /home/work/result \
+                   && sbuild --chroot xenial-amd64 --host amd64 -j2 --dpkg-source-opts=\"-I.git*\" \
+                   && cp /home/work/*.deb /home/work/result/"
+           pwd
+           docker run -it --name builder --privileged -v /var/lib/schroot -v $PWD:/home/work/src \
+               -w /home/work/src webispy/artik_devenv_ux64 \
+               bash -c "$SCRIPT"
+           docker cp builder:/home/work/result /tmp/
+           ls -l /tmp/result
+      - store_artifacts:
+         path: /tmp/result
+
+  build_arm64:
+    machine: true
+    steps:
+      - checkout
+      - run:
+         name: Submodules
+         command: |
+           git submodule update --init --recursive
+      - run:
+         name: Enabling QEMU
+         command: |
+           sudo apt update
+           sudo apt install -y --no-install-recommends build-essential qemu-user-static binfmt-support
+      - run:
+         name: Build
+         command: |
+           SCRIPT="mkdir /home/work/result \
+                   && sbuild --chroot xenial-arm64 --arch arm64 -j2 --dpkg-source-opts=\"-I.git*\" \
+                   && cp /home/work/*.deb /home/work/result/"
+           pwd
+           docker run -it --name builder --privileged -v /var/lib/schroot -v $PWD:/home/work/src \
+               -w /home/work/src webispy/artik_devenv_u710 \
+               bash -c "$SCRIPT"
+           docker cp builder:/home/work/result /tmp/
+           ls -l /tmp/result
+      - store_artifacts:
+         path: /tmp/result
+
+  build_armhf:
+    machine: true
+    steps:
+      - checkout
+      - run:
+         name: Submodules
+         command: |
+           git submodule update --init --recursive
+      - run:
+         name: Enabling QEMU
+         command: |
+           sudo apt update
+           sudo apt install -y --no-install-recommends build-essential qemu-user-static binfmt-support
+      - run:
+         name: Build
+         command: |
+           SCRIPT="mkdir /home/work/result \
+                   && sbuild --chroot xenial-armhf --arch armhf -j2 --dpkg-source-opts=\"-I.git*\" \
+                   && cp /home/work/*.deb /home/work/result/"
+           pwd
+           docker run -it --name builder --privileged -v /var/lib/schroot -v $PWD:/home/work/src \
+               -w /home/work/src webispy/artik_devenv_u530 \
+               bash -c "$SCRIPT"
+           docker cp builder:/home/work/result /tmp/
+           ls -l /tmp/result
+      - store_artifacts:
+         path: /tmp/result
+workflows:
+  version: 2
+  workflow:
+    jobs:
+    - build
+    - build_arm64
+    - build_armhf
