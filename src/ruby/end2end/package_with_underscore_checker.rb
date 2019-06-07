@@ -21,10 +21,10 @@ def main
 
   fail 'CONFIG env variable unexpectedly unset' unless ENV['CONFIG']
   bins_sub_dir = ENV['CONFIG']
-  bins_dir = File.join(root_dir, 'bins', bins_sub_dir)
+  bins_dir = '/usr/bin'
 
   plugin = File.join(bins_dir, 'grpc_ruby_plugin')
-  protoc = File.join(bins_dir, 'protobuf', 'protoc')
+  protoc = File.join(bins_dir, 'protoc')
 
   got = nil
 
