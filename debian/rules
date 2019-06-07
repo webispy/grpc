@@ -55,7 +55,7 @@ override_dh_auto_build:
 	ln -s /usr/include $(CURDIR)/third_party/protobuf/src
 	$(MAKE) shared prefix=/usr
 	dh_auto_build -O--buildsystem=pybuild
-	dh_auto_build -O--buildsystem=ruby
+#	dh_auto_build -O--buildsystem=ruby
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
@@ -67,9 +67,9 @@ override_dh_auto_install:
 	$(MAKE) INSTALL_LIBDIR=/lib/$(DEB_HOST_MULTIARCH) \
 		install prefix=$(CURDIR)/debian/tmp/usr
 	dh_auto_install -O--buildsystem=pybuild
-	TOPDIR=$(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH) \
+#	TOPDIR=$(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH) \
 		dh_auto_install -O--buildsystem=ruby
-	find $(CURDIR)/debian/ruby-grpc/ \
+#	find $(CURDIR)/debian/ruby-grpc/ \
 		\( -name ca.pem -o -name server1.key -o -name server1.pem \) \
 		-exec chmod a-x {} \;
 
