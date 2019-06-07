@@ -305,7 +305,8 @@ if not PY3:
   INSTALL_REQUIRES += ('futures>=2.2.0', 'enum34>=1.0.4')
 
 SETUP_REQUIRES = INSTALL_REQUIRES + (
-    'Sphinx~=1.8.1',
+    'sphinx>=1.3',
+    'sphinx_rtd_theme>=0.1.8',
     'six>=1.10',
   ) if ENABLE_DOCUMENTATION_BUILD else ()
 
